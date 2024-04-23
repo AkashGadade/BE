@@ -1,0 +1,1018 @@
+
+-------------------------------------------------------------------------------------------------------------------
+Ass - 1 : RPC
+
+-------------------------------------------------------------------------------------------------------------------
+client.py
+
+import xmlrpc.client
+
+client = xmlrpc.client.ServerProxy("http://localhost:8000")
+
+n = int(input("Enter num :"))
+result = client.fact(n)
+print(f"the factorial of number {n} is ", result)
+
+
+server.py
+
+from xmlrpc.server import SimpleXMLRPCServer
+
+def factorial(n):
+    if n == 0 or n== 1:
+        return 1
+    else:
+        return n * factorial(n-1)
+
+
+server = SimpleXMLRPCServer(('localhost', 8000))
+print("Server is running on port 8000")
+server.register_function(factorial, 'fact')
+server.serve_forever()
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+Ass - 2 : RMI
+-------------------------------------------------------------------------------------------------------------------
+client.py
+
+import Pyro4
+
+uri = input("Enter the URI of the StringConcatenator object: ")
+concatenator = Pyro4.Proxy(uri)
+
+str1 = input("Enter the first string:")
+str2 = input("Enter the second string:")
+
+result = concatenator.concatinate_string(str1, str2)
+print(f"The concatenated string is: {result}")
+
+
+
+Server.py
+import Pyro4
+@Pyro4.expose
+class StringConcatenator:
+    def concatenate_strings(self, str1, str2):
+        return str1+str2
+
+daemon = Pyro4.Daemon()
+uri = daemon.register(StringConcatenator)
+
+print("Server is running. URI:", uri)
+
+daemon.requestLoop()
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+Ass -3 : MapReduec
+
+-------------------------------------------------------------------------------------------------------------------
+(1) Char Count :	
+mapper .py
+	
+import sys
+for line in sys.stdin:
+    line = line.strip().replace(" ", "")
+    for char in line:
+        print(char + "\t" + str(1))
+
+reducer.py
+import sys
+
+current_char = None
+current_count = 0
+
+for line in sys.stdin:
+    char, count = line.strip().split("\t")
+    count = int(count)
+    #print(f"char is {char} and count is {count}")
+    #print("Current char is : " , current_char)
+    if current_char == char:
+        current_count += count
+    else:
+        if current_char:
+            print(f"{current_char}\t{current_count}")
+        current_char = char
+        current_count = count
+
+if current_char:
+    print(f"{current_char}\t{current_count}")
+
+-------------------------------------------------------------------------------------------------------------------
+(2) Word Count :
+
+mapper.py
+import sys
+
+for line in sys.stdin:
+    line = line.strip().lower()
+    words = line.split()
+    for word in words:
+        print(f"{word} \t {str(1)}")
+
+reducer.py
+
+#!/usr/bin/env python
+import sys
+
+current_word = None
+current_count = 0
+
+for line in sys.stdin:
+    word, count = line.strip().split("\t")
+    count = int(count)
+
+    if current_word == word:
+        current_count += count
+    else:
+        if current_word:
+            print(f"{current_word}\t{current_count}")
+        current_word = word
+        current_count = count
+
+if current_word:
+    print(f"{current_word}\t{current_count}")
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+Ass - 4 : Union , Intersection ....etc
+
+-------------------------------------------------------------------------------------------------------------------
+ 
+def fuzzy_set_union(A, B):
+    union = {}
+    for element in A:
+        union[element] = max(A[element], B.get(element, 0))
+    for element in B:
+        if element not in union:
+            union[element] = B[element]
+    return union
+
+def fuzzy_set_intersection(A, B):
+    intersection = {}
+    for element in A:
+        if element in B:
+            intersection[element] = min(A[element], B[element])
+    return intersection
+
+def fuzzy_set_complement(A):
+    complement = {}
+    for element in A:
+        complement[element] = 1 - A[element]
+    return complement
+
+def fuzzy_set_difference(A, B):
+    result = {}
+    for i in A:
+        result[i] = round(min(A[i], 1 - B.get(i, 0)), 2)
+    return result
+
+# Example fuzzy sets
+A = {'a': 0.7, 'b': 0.4, 'c': 0.5}
+B = {'b': 0.6, 'c': 0.3, 'd': 0.8}
+
+# Perform operations
+union_result = fuzzy_set_union(A, B)
+intersection_result = fuzzy_set_intersection(A, B)
+complement_result = fuzzy_set_complement(A)
+difference_result = fuzzy_set_difference(A, B)
+
+# Print results
+print("Union:", union_result)
+print("Intersection:", intersection_result)
+print("Complement of A:", complement_result)
+print("Difference (A - B):", difference_result)
+
+def cartesian_product_fuzzy_sets(A, B):
+    cartesian_relation = {}
+    for x in A:
+        for y in B:
+            cartesian_relation[(x, y)] = min(A[x], B[y])  # Minimum membership value
+    return cartesian_relation
+
+def max_min_composition(R, S):
+    result = {}
+    for (x, y1) in R:
+        for (y2, z) in S:
+            if y1 == y2:
+                composition_value = max(min(R[(x, y1)], S[(y2, z)]), result.get((x, z), 0))
+                result[(x, z)] = composition_value
+    return result
+
+# Example fuzzy sets
+A = {'a': 0.6, 'b': 0.2}
+B = {'x': 0.3, 'y': 0.5}
+
+# Cartesian product of fuzzy sets to create fuzzy relation R
+R = cartesian_product_fuzzy_sets(A, B)
+
+# Example fuzzy sets
+C = {'a': 0.2, 'b': 0.6}
+D = {'x': 0.5, 'y': 0.4}
+
+# Cartesian product of fuzzy sets to create fuzzy relation S
+S = cartesian_product_fuzzy_sets(D, C)
+
+# Max-min composition of fuzzy relations R and S
+print(R)
+print(S)
+composition_result = max_min_composition(R, S)
+
+print("Composition Result:")
+for pair, membership in composition_result.items():
+    print(pair, "->", membership)
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+Ass - 5 : Load Balancing 
+
+-------------------------------------------------------------------------------------------------------------------
+
+import random
+
+class LoadBalancer:
+    def __init__(self, servers):
+        self.servers = servers
+
+    def round_robin(self):
+        server = self.servers.pop(0)
+        self.servers.append(server)
+        return server
+
+    def random_selection(self):
+        return random.choice(self.servers)
+
+# Example usage:
+servers = ['Server1', 'Server2', 'Server3']
+lb_round_robin = LoadBalancer(servers)  # Create a copy to avoid modifying the original list
+lb_random = LoadBalancer(servers)
+
+# Simulate requests coming from clients
+num_requests = 20
+print("Round Robin Load Balancing:")
+for i in range(num_requests):
+    server = lb_round_robin.round_robin()
+    print(f"Request {i+1} directed to {server}")
+
+print("\nRandom Load Balancing:")
+for i in range(num_requests):
+    server = lb_random.random_selection()
+    print(f"Request {i+1} directed to {server}")
+
+-------------------------------------------------------------------------------------------------------------------
+
+Ass - 6 : Clonal Selection
+
+-------------------------------------------------------------------------------------------------------------------
+
+import random
+
+# Initialize the population with random antibodies
+def initialize_population(population_size, antibody_length):
+    population = []
+    
+    for _ in range(population_size):
+        antibody = [random.choice([0, 1]) for _ in range(antibody_length)]
+        population.append(antibody)
+    
+    return population
+
+# Calculate affinity of an antibody
+def calculate_affinity(antibody):
+    return sum(antibody)
+
+# Select the antibodies with highest affinity
+def select_best_antibodies(population, clone_size):
+    sorted_population = sorted(population, key=calculate_affinity, reverse=True)
+    return sorted_population[:clone_size]
+
+# Mutate the selected antibodies
+def mutate_antibodies(antibodies, mutation_rate):
+    for antibody in antibodies:
+        for i in range(len(antibody)):
+            if random.random() < mutation_rate:
+                antibody[i] = 1 - antibody[i]
+    
+    return antibodies
+
+# Perform clonal selection algorithm
+def clonal_selection_algorithm(population_size, antibody_length, clone_size, mutation_rate, generations):
+    population = initialize_population(population_size, antibody_length)
+    
+    for _ in range(generations):
+        best_antibodies = select_best_antibodies(population, clone_size)
+        mutated_antibodies = mutate_antibodies(best_antibodies, mutation_rate)
+        
+        population = best_antibodies + mutated_antibodies
+    
+    return max(population, key=calculate_affinity)
+
+# Example usage
+population_size = 100
+antibody_length = 10
+clone_size = 10
+mutation_rate = 0.1
+generations = 100
+
+result = clonal_selection_algorithm(population_size, antibody_length, clone_size, mutation_rate, generations)
+print("Best Antibody:", result)
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+
+
+-------------------------------------------------------------------------------------------------------------------
+AIPR -
+
+
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+import numpy as np
+
+# Load the breast cancer dataset
+data = datasets.load_breast_cancer()
+X = data.data
+y = data.target
+
+
+# Split the dataset into a training set and a test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the features
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+
+# Define the AIS algorithm
+class ClonalSelectionClassifier:
+    def __init__(self, num_clones):
+        self.num_clones = num_clones
+
+    def fit(self, X, y):
+        self.antibodies = X
+        self.targets = y
+
+    def predict(self, X):
+        predictions = []
+        for x in X:
+            # Compute the Euclidean distance to each antibody
+            distances = np.sqrt(np.sum((self.antibodies - x)**2, axis=1))
+            # Select the closest antibodies
+            selected_antibodies = np.argsort(distances)[:self.num_clones]
+            # Predict the majority class among the selected antibodies
+            prediction = np.argmax(np.bincount(self.targets[selected_antibodies]))
+            predictions.append(prediction)
+        return np.array(predictions)
+
+# Train the AIS classifier
+clf = ClonalSelectionClassifier(num_clones=5)
+clf.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred = clf.predict(X_test)
+
+# Compute the accuracy of the classifier
+accuracy = accuracy_score(y_test, y_pred)
+print('Accuracy:', accuracy)
+
+
+
+import matplotlib.pyplot as plt
+
+# Select an image from the test set (for demonstration, let's choose the first sample)
+sample_index = 4
+test_sample = X_test[sample_index]
+true_label = y_test[sample_index]
+
+# Predict the class label for the test sample
+predicted_label = clf.predict([test_sample])[0]
+
+# Display the features of the test sample
+plt.figure(figsize=(10, 6))
+plt.bar(range(len(test_sample)), test_sample)
+plt.title("Features of Test Sample")
+plt.xlabel("Feature Index")
+plt.ylabel("Feature Value")
+plt.show()
+
+print(f"True Label: {true_label}, Predicted Label: {predicted_label}")
+
+
+
+# Define the number of samples to print
+num_samples_to_print = 5
+
+# Iterate over the selected number of samples
+for i in range(num_samples_to_print):
+    sample = X_test[i]
+    true_label = y_test[i]
+    print(f"Sample {i + 1}:")
+    print("Features:", sample)
+    print("True Label:", true_label)
+    print()
+    
+    
+    
+   
+-------------------------------------------------------------------------------------------------------------------
+
+8 DEAP 
+
+import random
+from deap import base, creator, tools, algorithms
+ 
+# Define the evaluation function (minimize a simple mathematical function)
+def eval_func(individual):
+    # Example evaluation function (minimize a quadratic function)
+    return sum(x ** 2 for x in individual),
+ 
+# DEAP setup
+creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMin)
+ 
+toolbox = base.Toolbox()
+ 
+# Define attributes and individuals
+toolbox.register("attr_float", random.uniform, -5.0, 5.0)  # Example: Float values between -5 and 5
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_float, n=3)  # Example: 3-dimensional individual
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+ 
+# Evaluation function and genetic operators
+toolbox.register("evaluate", eval_func)
+toolbox.register("mate", tools.cxBlend, alpha=0.5)
+toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.2)
+toolbox.register("select", tools.selTournament, tournsize=3)
+ 
+# Create population
+population = toolbox.population(n=50)
+ 
+# Genetic Algorithm parameters
+generations = 20
+ 
+# Run the algorithm
+for gen in range(generations):
+    offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
+    
+    fits = toolbox.map(toolbox.evaluate, offspring)
+    for fit, ind in zip(fits, offspring):
+        ind.fitness.values = fit
+    
+    population = toolbox.select(offspring, k=len(population))
+ 
+# Get the best individual after generations
+best_ind = tools.selBest(population, k=1)[0]
+best_fitness = best_ind.fitness.values[0]
+ 
+print("Best individual:", best_ind)
+print("Best fitness:", best_fitness)
+-------------------------------------------------------------------------------------------------------------------
+AIPR -
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+import numpy as np
+
+# Load the breast cancer dataset
+data = datasets.load_breast_cancer()
+X = data.data
+y = data.target
+
+# Split the dataset into a training set and a test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the features
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+
+# Define the AIS algorithm
+class ClonalSelectionClassifier:
+    def init(self, num_clones):
+        self.num_clones = num_clones
+
+    def fit(self, X, y):
+        self.antibodies = X
+        self.targets = y
+
+    def predict(self, X):
+        predictions = []
+        for x in X:
+            # Compute the Euclidean distance to each antibody
+            distances = np.sqrt(np.sum((self.antibodies - x)**2, axis=1))
+            # Select the closest antibodies
+            selected_antibodies = np.argsort(distances)[:self.num_clones]
+            # Predict the majority class among the selected antibodies
+            prediction = np.argmax(np.bincount(self.targets[selected_antibodies]))
+            predictions.append(prediction)
+        return np.array(predictions)
+
+# Train the AIS classifier
+clf = ClonalSelectionClassifier(num_clones=5)
+clf.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred = clf.predict(X_test)
+
+# Compute the accuracy of the classifier
+accuracy = accuracy_score(y_test, y_pred)
+print('Accuracy:', accuracy)
+-------------------------------------------------------------------------------------------------------------------
+*************************************************************************************************
+RPC
+
+client
+import xmlrpc.client
+
+client = xmlrpc.client.ServerProxy("http://localhost:8000")
+
+n = int(input("Enter num :"))
+result = client.fact(n)
+print(f"the factorial of number {n} is ", result)
+-------------------
+server
+from xmlrpc.server import SimpleXMLRPCServer
+
+def factorial(n):
+    if n == 0 or n== 1:
+        return 1
+    else:
+        return n * factorial(n-1)
+
+
+server = SimpleXMLRPCServer(('localhost', 8000))
+print("Server is running on port 8000")
+server.register_function(factorial, 'fact')
+server.serve_forever()
+------------------------------------------------------------------------
+
+RMI
+
+client
+import Pyro4
+
+uri = input("Enter the URI of the StringConcatenator object: ")
+concatenator = Pyro4.Proxy(uri)
+
+str1 = input("Enter the first string:")
+str2 = input("Enter the second string:")
+
+result = concatenator.concatinate_string(str1, str2)
+print(f"The concatenated string is: {result}")
+
+
+
+server
+
+import Pyro4
+@Pyro4.expose
+class StringConcatenator:
+    def concatenate_strings(self, str1, str2):
+        return str1+str2
+
+daemon = Pyro4.Daemon()
+uri = daemon.register(StringConcatenator)
+
+print("Server is running. URI:", uri)
+
+daemon.requestLoop()
+------------------------------------------------------------------------------
+CHAR COUNT
+
+mapper.py
+import sys
+
+for line in sys.stdin:
+    line = line.strip().replace(" ","")
+    for char in line:
+        print(char + "\t"+str(1))
+ 
+
+
+
+reducer.py
+import sys
+
+current_char = None
+current_count = 0
+
+for line in sys.stdin:
+    line = line.strip()
+    char, count = line.split('\t', 1)
+
+    try:
+        count = int(count)
+    except ValueError:
+        continue
+
+    if current_char == char:
+        current_count += count
+    else:
+        if current_char:
+            print('%s\t%s'% (current_char, current_count))
+        current_count = count
+        current_char = char
+
+if current_char is not None:
+    print('%s\t%s' % (current_char, current_count))
+---------------------------------------------------------------------------------
+WORD COUNT
+
+mapper.py
+import sys
+
+for line in sys.stdin:
+    linechar = [r for r in line.lower() if r.isalpha() or r==' ']
+    words = ''.join(linechar).strip().split()
+    
+    for word in words:
+        print('%s\t%s' % (word, 1))
+
+        
+reducer.py
+from operator import itemgetter
+import sys
+
+current_word = None
+current_count = 0
+word = None
+
+for line in sys.stdin:
+    line = line.strip()
+    word, count = line.split('\t', 1)
+
+    try:
+        count = int(count)
+    except ValueError:
+        continue
+
+    if current_word == word:
+        current_count += count
+    else:
+        if current_word:
+            print('%s\t%s'% (current_word, current_count))
+        current_count = count
+        current_word = word
+
+if current_word == word:
+    print('%s\t%s' % (current_word, current_count))
+--------------------------------------------------------------------------
+UNION INTERSECTION
+def fuzzy_set_union(A, B):
+    union = {}
+    for element in A:
+        union[element] = max(A[element], B.get(element, 0))
+    for element in B:
+        if element not in union:
+            union[element] = B[element]
+    return union
+
+def fuzzy_set_intersection(A, B):
+    intersection = {}
+    for element in A:
+        if element in B:
+            intersection[element] = min(A[element], B[element])
+    return intersection
+
+def fuzzy_set_complement(A):
+    complement = {}
+    for element in A:
+        complement[element] = 1 - A[element]
+    return complement
+
+def fuzzy_set_difference(A, B):
+    result = {}
+    for i in A:
+        result[i] = round(min(A[i], 1 - B.get(i, 0)), 2)
+    return result
+
+# Example fuzzy sets
+A = {'a': 0.7, 'b': 0.4, 'c': 0.5}
+B = {'b': 0.6, 'c': 0.3, 'd': 0.8}
+
+# Perform operations
+union_result = fuzzy_set_union(A, B)
+intersection_result = fuzzy_set_intersection(A, B)
+complement_result = fuzzy_set_complement(A)
+difference_result = fuzzy_set_difference(A, B)
+
+# Print results
+print("Union:", union_result)
+print("Intersection:", intersection_result)
+print("Complement of A:", complement_result)
+print("Difference (A - B):", difference_result)
+
+
+def cartesian_product_fuzzy_sets(A, B):
+    cartesian_relation = {}
+    for x in A:
+        for y in B:
+            cartesian_relation[(x, y)] = min(A[x], B[y])  # Minimum membership value
+    return cartesian_relation
+
+def max_min_composition(R, S):
+    result = {}
+    for (x, y1) in R:
+        for (y2, z) in S:
+            if y1 == y2:
+                composition_value = max(min(R[(x, y1)], S[(y2, z)]), result.get((x, z), 0))
+                result[(x, z)] = composition_value
+    return result
+
+# Example fuzzy sets
+A = {'a': 0.6, 'b': 0.2}
+B = {'x': 0.3, 'y': 0.5}
+
+# Cartesian product of fuzzy sets to create fuzzy relation R
+R = cartesian_product_fuzzy_sets(A, B)
+
+# Example fuzzy sets
+C = {'a': 0.2, 'b': 0.6}
+D = {'x': 0.5, 'y': 0.4}
+
+# Cartesian product of fuzzy sets to create fuzzy relation S
+S = cartesian_product_fuzzy_sets(D, C)
+
+# Max-min composition of fuzzy relations R and S
+print(R)
+print(S)
+composition_result = max_min_composition(R, S)
+
+print("Composition Result:")
+for pair, membership in composition_result.items():
+    print(pair, "->", membership)
+
+
+
+----------------------------------------------------------------------------
+LOAD BALANCING
+
+import random
+
+class LoadBalancer:
+    def __init__(self, servers):
+        self.servers = servers
+        self.num_servers = len(servers)
+        self.round_robin_index = 0
+    def round_robin(self):
+        server = self.servers[self.round_robin_index]
+        self.round_robin_index = (self.round_robin_index + 1) % self.num_servers
+        return server
+
+    def random_selection(self):
+        return random.choice(self.servers)
+
+# Example usage:
+servers = ['Server1', 'Server2', 'Server3']
+lb_round_robin = LoadBalancer(servers)
+lb_random = LoadBalancer(servers)
+
+# Simulate requests coming from clients
+num_requests = 20
+print("Round Robin Load Balancing:")
+for i in range(num_requests):
+    server = lb_round_robin.round_robin()
+    print(f"Request {i+1} directed to {server}")
+
+print("\nRandom Load Balancing:")
+for i in range(num_requests):
+    server = lb_random.random_selection()
+    print(f"Request {i+1} directed to {server}")
+-----------------------------------------------------------------------------------
+ANT COLONY
+
+import numpy as np
+import random
+ 
+# Define the distance matrix (distances between cities)
+# Replace this with your distance matrix or generate one based on your problem
+# Example distance matrix (replace this with your actual data)
+distance_matrix = np.array([
+    [0, 10, 15, 20],
+    [10, 0, 35, 25],
+    [15, 35, 0, 30],
+    [20, 25, 30, 0]
+])
+ 
+# Parameters for Ant Colony Optimization
+num_ants = 10
+num_iterations = 50
+evaporation_rate = 0.5
+pheromone_constant = 1.0
+heuristic_constant = 1.0
+ 
+# Initialize pheromone matrix and visibility matrix
+num_cities = len(distance_matrix)
+pheromone = np.ones((num_cities, num_cities))  # Pheromone matrix
+visibility = 1 / distance_matrix  # Visibility matrix (inverse of distance)
+ 
+# ACO algorithm
+for iteration in range(num_iterations):
+    ant_routes = []
+    for ant in range(num_ants):
+        current_city = random.randint(0, num_cities - 1)
+        visited_cities = [current_city]
+        route = [current_city]
+        
+        while len(visited_cities) < num_cities:
+            probabilities = []
+            for city in range(num_cities):
+                if city not in visited_cities:
+                    pheromone_value = pheromone[current_city][city]
+                    visibility_value = visibility[current_city][city]
+                    probability = (pheromone_value ** pheromone_constant) * (visibility_value ** heuristic_constant)
+                    probabilities.append((city, probability))
+            
+            probabilities = sorted(probabilities, key=lambda x: x[1], reverse=True)
+            selected_city = probabilities[0][0]
+            route.append(selected_city)
+            visited_cities.append(selected_city)
+            current_city = selected_city
+        
+        ant_routes.append(route)
+    
+    # Update pheromone levels
+    delta_pheromone = np.zeros((num_cities, num_cities))
+    for ant, route in enumerate(ant_routes):
+        for i in range(len(route) - 1):
+            city_a = route[i]
+            city_b = route[i + 1]
+            delta_pheromone[city_a][city_b] += 1 / distance_matrix[city_a][city_b]
+            delta_pheromone[city_b][city_a] += 1 / distance_matrix[city_a][city_b]
+    
+    pheromone = (1 - evaporation_rate) * pheromone + delta_pheromone
+ 
+# Find the best route
+best_route_index = np.argmax([sum(distance_matrix[cities[i]][cities[(i + 1) % num_cities]] for i in range(num_cities)) for cities in ant_routes])
+best_route = ant_routes[best_route_index]
+shortest_distance = sum(distance_matrix[best_route[i]][best_route[(i + 1) % num_cities]] for i in range(num_cities))
+ 
+print("Best route:", best_route)
+print("Shortest distance:", shortest_distance)
+-----------------------------------------------------------------------------------------------
+
+#Aim:- Implementation of Clonal selection algorithm using Python.
+
+import random
+
+# Initialize the population with random antibodies
+def initialize_population(population_size, antibody_length):
+    population = []
+    
+    for _ in range(population_size):
+        antibody = [random.choice([0, 1]) for _ in range(antibody_length)]
+        population.append(antibody)
+    
+    return population
+
+# Calculate affinity of an antibody
+def calculate_affinity(antibody):
+    return sum(antibody)
+
+# Select the antibodies with highest affinity
+def select_best_antibodies(population, clone_size):
+    sorted_population = sorted(population, key=calculate_affinity, reverse=True)
+    return sorted_population[:clone_size]
+
+# Mutate the selected antibodies
+def mutate_antibodies(antibodies, mutation_rate):
+    for antibody in antibodies:
+        for i in range(len(antibody)):
+            if random.random() < mutation_rate:
+                antibody[i] = 1 - antibody[i]
+    
+    return antibodies
+
+# Perform clonal selection algorithm
+def clonal_selection_algorithm(population_size, antibody_length, clone_size, mutation_rate, generations):
+    population = initialize_population(population_size, antibody_length)
+    
+    for _ in range(generations):
+        best_antibodies = select_best_antibodies(population, clone_size)
+        mutated_antibodies = mutate_antibodies(best_antibodies, mutation_rate)
+        
+        population += mutated_antibodies
+    
+    return max(population, key=calculate_affinity)
+
+# Example usage
+population_size = 100
+antibody_length = 10
+clone_size = 10
+mutation_rate = 0.1
+generations = 100
+
+result = clonal_selection_algorithm(population_size, antibody_length, clone_size, mutation_rate, generations)
+print("Best Antibody:", result)
+-----------------------------------------------------------------------------------------------
+DEAP
+
+import random
+from deap import base, creator, tools, algorithms
+ 
+# Define the evaluation function (minimize a simple mathematical function)
+def eval_func(individual):
+    # Example evaluation function (minimize a quadratic function)
+    return sum(x ** 2 for x in individual),
+ 
+# DEAP setup
+creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMin)
+ 
+toolbox = base.Toolbox()
+ 
+# Define attributes and individuals
+toolbox.register("attr_float", random.uniform, -5.0, 5.0)  # Example: Float values between -5 and 5
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_float, n=3)  # Example: 3-dimensional individual
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+ 
+# Evaluation function and genetic operators
+toolbox.register("evaluate", eval_func)
+toolbox.register("mate", tools.cxBlend, alpha=0.5)
+toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.2)
+toolbox.register("select", tools.selTournament, tournsize=3)
+ 
+# Create population
+population = toolbox.population(n=50)
+ 
+# Genetic Algorithm parameters
+generations = 20
+ 
+# Run the algorithm
+for gen in range(generations):
+    offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
+    
+    fits = toolbox.map(toolbox.evaluate, offspring)
+    for fit, ind in zip(fits, offspring):
+        ind.fitness.values = fit
+    
+    population = toolbox.select(offspring, k=len(population))
+ 
+# Get the best individual after generations
+best_ind = tools.selBest(population, k=1)[0]
+best_fitness = best_ind.fitness.values[0]
+ 
+print("Best individual:", best_ind)
+print("Best fitness:", best_fitness)
+-----------------------------------------------------------------------------------------------
+AIPR
+
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+import numpy as np
+
+# Load the breast cancer dataset
+data = datasets.load_breast_cancer()
+X = data.data
+y = data.target
+
+# Split the dataset into a training set and a test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the features
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+
+# Define the AIS algorithm
+class ClonalSelectionClassifier:
+    def init(self, num_clones):
+        self.num_clones = num_clones
+
+    def fit(self, X, y):
+        self.antibodies = X
+        self.targets = y
+
+    def predict(self, X):
+        predictions = []
+        for x in X:
+            # Compute the Euclidean distance to each antibody
+            distances = np.sqrt(np.sum((self.antibodies - x)**2, axis=1))
+            # Select the closest antibodies
+            selected_antibodies = np.argsort(distances)[:self.num_clones]
+            # Predict the majority class among the selected antibodies
+            prediction = np.argmax(np.bincount(self.targets[selected_antibodies]))
+            predictions.append(prediction)
+        return np.array(predictions)
+
+# Train the AIS classifier
+clf = ClonalSelectionClassifier(num_clones=5)
+clf.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred = clf.predict(X_test)
+
+# Compute the accuracy of the classifier
+accuracy = accuracy_score(y_test, y_pred)
+print('Accuracy:', accuracy)
+-----------------------------------------------------------------------------------------------
